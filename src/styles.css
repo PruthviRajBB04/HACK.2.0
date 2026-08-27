@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap');
+@import "tailwindcss" source("../");
+
+:root { --ink: #10201b; --forest: #153c32; --forest-deep: #0d2d25; --copper: #b96c35; --sand: #f3efe5; --line: #d9dfda; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; font-family: 'DM Sans', sans-serif; background: #f8f7f3; }
+h1, h2, h3, .font-display { font-family: 'IBM Plex Serif', serif; }
+button, a, input, select, textarea { outline-offset: 3px; }
+button, a { -webkit-tap-highlight-color: transparent; }
+::selection { background: #d6e5de; color: var(--forest-deep); }
+.industrial-grid { background-image: linear-gradient(rgba(21,60,50,.055) 1px, transparent 1px), linear-gradient(90deg,rgba(21,60,50,.055) 1px,transparent 1px); background-size: 34px 34px; }
+.hero-mesh { background: radial-gradient(circle at 78% 18%,rgba(185,108,53,.18),transparent 24rem), radial-gradient(circle at 18% 82%,rgba(111,149,130,.19),transparent 26rem), #102f27; }
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #9caea6 transparent; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.animate-rise { animation: rise .55s ease-out both; }
