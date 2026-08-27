@@ -1,0 +1,14 @@
+# Local Netlify folder
+.netlify/
+
+# TanStack generated files
+.tanstack/
+
+# Local environment variables
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
