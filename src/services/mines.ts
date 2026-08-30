@@ -44,7 +44,21 @@ function mapMine(row: MineRow): MineRecord {
   }
 }
 
-export async function createMine(input: MineInput): Promise<MineRecord> {
+export async function getMines(): Promise<MineRecord[]> {
+  const { data, error } = await supabase
+    .from('mines')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => mapMine(row as MineRow))
+}
+
+export async function createMine(input: MineInput, organizationId?: string | null): Promise<MineRecord> {
+  if (!organizationId) {
+    throw new Error('This session is not linked to an organization. Complete organization setup or sign in before creating a mine.')
+  }
+
   const { data, error } = await supabase
     .from('mines')
     .insert({
@@ -55,6 +69,7 @@ export async function createMine(input: MineInput): Promise<MineRecord> {
       operator_name: input.operatorName.trim() || null,
       mine_type: input.mineType.trim() || null,
       status: input.status,
+      organization_id: organizationId,
     })
     .select('*')
     .single()

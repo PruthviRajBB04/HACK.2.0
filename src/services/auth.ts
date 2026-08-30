@@ -23,9 +23,14 @@ function isPublicRole(value: unknown): value is PublicRole {
 
 export async function sessionFromAuthUser(user: User): Promise<SessionUser> {
   let organizationName = 'Organization not set up'
+  let organizationId: string | undefined
+
   try {
     const organization = await getCurrentOrganization()
-    if (organization) organizationName = organization.name
+    if (organization) {
+      organizationName = organization.name
+      organizationId = organization.id
+    }
   } catch {
     organizationName = 'Organization not set up'
   }
@@ -35,6 +40,7 @@ export async function sessionFromAuthUser(user: User): Promise<SessionUser> {
 
   return {
     id: user.id,
+    organizationId,
     name: String(user.user_metadata?.full_name || user.email || 'Signed-in user'),
     role,
     organization: organizationName,
@@ -86,12 +92,12 @@ export const prototypeAuthService: AuthenticationService = {
   },
 }
 
-export function createDemoSession(role: PublicRole): SessionUser {
+export function createDemoSession(role: PublicRole = 'Mine Manager'): SessionUser {
   return {
     name: 'Demo User',
     role,
     organization: appConfig.organizationPlaceholder,
-    department: role === 'Field Officer' ? 'Field Operations' : role.replace('Corporate Management', 'Corporate Governance'),
+    department: role === 'Field Officer' ? 'Field Operations' : role === 'Mine Manager' ? 'Mine Operations' : role.replace('Corporate Management', 'Corporate Governance'),
     assignedMineId: role === 'Corporate Management' || role === 'Regulatory Authority' ? undefined : 'demo-north-01',
     isDemo: true,
   }

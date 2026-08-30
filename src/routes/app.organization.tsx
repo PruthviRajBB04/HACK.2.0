@@ -3,7 +3,6 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Button, Card, ErrorState, Field, Input, Select, Textarea } from '@/components/ui'
-import { roleNavigation } from '@/config/app'
 import { countries, indianStatesAndUts, organizationTypes } from '@/config/organization'
 import { useSession } from '@/context/SessionContext'
 import { createOrganization, updateOrganization } from '@/services/organizations'
@@ -52,14 +51,14 @@ function OrganizationSetupPage() {
   })
   const isDemo = Boolean(session?.isDemo)
   const existing = organization
-  const canAccessOrganization = Boolean(session && roleNavigation[session.role].includes('Organization'))
+  const canAccessOrganization = Boolean(session)
 
   useEffect(() => {
     if (existing) setValues(valuesFromOrganization(existing))
   }, [existing?.id])
 
   useEffect(() => {
-    if (!canAccessOrganization) void navigate({ to: '/app', replace: true })
+    if (!canAccessOrganization) void navigate({ to: '/', replace: true })
   }, [canAccessOrganization, navigate])
 
   if (!canAccessOrganization) return null

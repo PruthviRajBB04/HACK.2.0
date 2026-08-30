@@ -31,7 +31,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       const current = await getCurrentOrganization()
       setOrganization(current)
       if (current) {
-        setSession((currentSession) => currentSession && !currentSession.isDemo ? { ...currentSession, organization: current.name } : currentSession)
+        setSession((currentSession) => currentSession && !currentSession.isDemo ? { ...currentSession, organization: current.name, organizationId: current.id } : currentSession)
       }
     } catch {
       setOrganization(null)

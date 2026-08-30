@@ -12,7 +12,7 @@ export const rolePermissions: Record<UserRole, string[]> = {
 }
 export const futureModules = ['Inspections', 'Violations', 'Corrective Actions', 'Documents', 'AI Insights', 'GIS Map', 'Contractors', 'Reports', 'Audit Logs', 'Settings'] as const
 export const roleNavigation: Record<PublicRole, string[]> = {
-  'Field Officer': ['Dashboard', 'Mines', 'Compliance', 'Inspections', 'Documents', 'Notifications'],
+  'Field Officer': ['Dashboard', 'Organization', 'Mines', 'Compliance', 'Inspections', 'Documents', 'Notifications'],
   'Compliance Officer': ['Dashboard', 'Mines', 'Compliance', 'Inspections', 'Violations', 'Corrective Actions', 'Documents', 'Reports', 'Notifications', 'Audit Logs'],
   'Mine Manager': ['Dashboard', 'Organization', 'Mines', 'Compliance', 'Inspections', 'Violations', 'Corrective Actions', 'Documents', 'Contractors', 'Reports', 'Notifications'],
   'Corporate Management': ['Dashboard', 'Organization', 'Mines', 'Compliance', 'Violations', 'Corrective Actions', 'AI Insights', 'GIS Map', 'Contractors', 'Reports', 'Notifications', 'Audit Logs'],
