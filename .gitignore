@@ -6,6 +6,8 @@
 
 # Local environment variables
 .env.local
+.env
+*.env
 
 # Dependencies
 node_modules/
@@ -13,3 +15,4 @@ node_modules/
 # Build output
 dist/
 supabase/.temp/
+backend/ai-vision/dist/

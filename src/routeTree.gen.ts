@@ -20,10 +20,14 @@ import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppOrganizationRouteImport } from './routes/app.organization'
 import { Route as AppNotificationsRouteImport } from './routes/app.notifications'
 import { Route as AppMinesRouteImport } from './routes/app.mines'
+import { Route as AppInspectionsRouteImport } from './routes/app.inspections'
+import { Route as AppDocumentsRouteImport } from './routes/app.documents'
 import { Route as AppComplianceRouteImport } from './routes/app.compliance'
 import { Route as AppModuleRouteImport } from './routes/app.$module'
 import { Route as AppMinesIndexRouteImport } from './routes/app.mines.index'
 import { Route as AppMinesMineIdRouteImport } from './routes/app.mines.$mineId'
+import { Route as AppInspectionsCreateRouteImport } from './routes/app.inspections.create'
+import { Route as AppInspectionsIdRouteImport } from './routes/app.inspections.$id'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -80,6 +84,16 @@ const AppMinesRoute = AppMinesRouteImport.update({
   path: '/mines',
   getParentRoute: () => AppRoute,
 } as any)
+const AppInspectionsRoute = AppInspectionsRouteImport.update({
+  id: '/inspections',
+  path: '/inspections',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppComplianceRoute = AppComplianceRouteImport.update({
   id: '/compliance',
   path: '/compliance',
@@ -100,6 +114,16 @@ const AppMinesMineIdRoute = AppMinesMineIdRouteImport.update({
   path: '/$mineId',
   getParentRoute: () => AppMinesRoute,
 } as any)
+const AppInspectionsCreateRoute = AppInspectionsCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AppInspectionsRoute,
+} as any)
+const AppInspectionsIdRoute = AppInspectionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppInspectionsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,11 +134,15 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/app/$module': typeof AppModuleRoute
   '/app/compliance': typeof AppComplianceRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/inspections': typeof AppInspectionsRouteWithChildren
   '/app/mines': typeof AppMinesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/organization': typeof AppOrganizationRoute
   '/app/profile': typeof AppProfileRoute
   '/app/': typeof AppIndexRoute
+  '/app/inspections/$id': typeof AppInspectionsIdRoute
+  '/app/inspections/create': typeof AppInspectionsCreateRoute
   '/app/mines/$mineId': typeof AppMinesMineIdRoute
   '/app/mines/': typeof AppMinesIndexRoute
 }
@@ -126,10 +154,14 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/app/$module': typeof AppModuleRoute
   '/app/compliance': typeof AppComplianceRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/inspections': typeof AppInspectionsRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/organization': typeof AppOrganizationRoute
   '/app/profile': typeof AppProfileRoute
   '/app': typeof AppIndexRoute
+  '/app/inspections/$id': typeof AppInspectionsIdRoute
+  '/app/inspections/create': typeof AppInspectionsCreateRoute
   '/app/mines/$mineId': typeof AppMinesMineIdRoute
   '/app/mines': typeof AppMinesIndexRoute
 }
@@ -143,11 +175,15 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/app/$module': typeof AppModuleRoute
   '/app/compliance': typeof AppComplianceRoute
+  '/app/documents': typeof AppDocumentsRoute
+  '/app/inspections': typeof AppInspectionsRouteWithChildren
   '/app/mines': typeof AppMinesRouteWithChildren
   '/app/notifications': typeof AppNotificationsRoute
   '/app/organization': typeof AppOrganizationRoute
   '/app/profile': typeof AppProfileRoute
   '/app/': typeof AppIndexRoute
+  '/app/inspections/$id': typeof AppInspectionsIdRoute
+  '/app/inspections/create': typeof AppInspectionsCreateRoute
   '/app/mines/$mineId': typeof AppMinesMineIdRoute
   '/app/mines/': typeof AppMinesIndexRoute
 }
@@ -162,11 +198,15 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/app/$module'
     | '/app/compliance'
+    | '/app/documents'
+    | '/app/inspections'
     | '/app/mines'
     | '/app/notifications'
     | '/app/organization'
     | '/app/profile'
     | '/app/'
+    | '/app/inspections/$id'
+    | '/app/inspections/create'
     | '/app/mines/$mineId'
     | '/app/mines/'
   fileRoutesByTo: FileRoutesByTo
@@ -178,10 +218,14 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/app/$module'
     | '/app/compliance'
+    | '/app/documents'
+    | '/app/inspections'
     | '/app/notifications'
     | '/app/organization'
     | '/app/profile'
     | '/app'
+    | '/app/inspections/$id'
+    | '/app/inspections/create'
     | '/app/mines/$mineId'
     | '/app/mines'
   id:
@@ -194,11 +238,15 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/app/$module'
     | '/app/compliance'
+    | '/app/documents'
+    | '/app/inspections'
     | '/app/mines'
     | '/app/notifications'
     | '/app/organization'
     | '/app/profile'
     | '/app/'
+    | '/app/inspections/$id'
+    | '/app/inspections/create'
     | '/app/mines/$mineId'
     | '/app/mines/'
   fileRoutesById: FileRoutesById
@@ -291,6 +339,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMinesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/inspections': {
+      id: '/app/inspections'
+      path: '/inspections'
+      fullPath: '/app/inspections'
+      preLoaderRoute: typeof AppInspectionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/documents': {
+      id: '/app/documents'
+      path: '/documents'
+      fullPath: '/app/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/compliance': {
       id: '/app/compliance'
       path: '/compliance'
@@ -319,8 +381,36 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMinesMineIdRouteImport
       parentRoute: typeof AppMinesRoute
     }
+    '/app/inspections/create': {
+      id: '/app/inspections/create'
+      path: '/create'
+      fullPath: '/app/inspections/create'
+      preLoaderRoute: typeof AppInspectionsCreateRouteImport
+      parentRoute: typeof AppInspectionsRoute
+    }
+    '/app/inspections/$id': {
+      id: '/app/inspections/$id'
+      path: '/$id'
+      fullPath: '/app/inspections/$id'
+      preLoaderRoute: typeof AppInspectionsIdRouteImport
+      parentRoute: typeof AppInspectionsRoute
+    }
   }
 }
+
+interface AppInspectionsRouteChildren {
+  AppInspectionsIdRoute: typeof AppInspectionsIdRoute
+  AppInspectionsCreateRoute: typeof AppInspectionsCreateRoute
+}
+
+const AppInspectionsRouteChildren: AppInspectionsRouteChildren = {
+  AppInspectionsIdRoute: AppInspectionsIdRoute,
+  AppInspectionsCreateRoute: AppInspectionsCreateRoute,
+}
+
+const AppInspectionsRouteWithChildren = AppInspectionsRoute._addFileChildren(
+  AppInspectionsRouteChildren,
+)
 
 interface AppMinesRouteChildren {
   AppMinesMineIdRoute: typeof AppMinesMineIdRoute
@@ -339,6 +429,8 @@ const AppMinesRouteWithChildren = AppMinesRoute._addFileChildren(
 interface AppRouteChildren {
   AppModuleRoute: typeof AppModuleRoute
   AppComplianceRoute: typeof AppComplianceRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
+  AppInspectionsRoute: typeof AppInspectionsRouteWithChildren
   AppMinesRoute: typeof AppMinesRouteWithChildren
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppOrganizationRoute: typeof AppOrganizationRoute
@@ -349,6 +441,8 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppModuleRoute: AppModuleRoute,
   AppComplianceRoute: AppComplianceRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
+  AppInspectionsRoute: AppInspectionsRouteWithChildren,
   AppMinesRoute: AppMinesRouteWithChildren,
   AppNotificationsRoute: AppNotificationsRoute,
   AppOrganizationRoute: AppOrganizationRoute,
