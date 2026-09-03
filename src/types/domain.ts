@@ -6,7 +6,7 @@ export type ComplianceStatus = 'Compliant' | 'Due Soon' | 'Pending' | 'Overdue' 
 export type InspectionStatus = 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled'
 export type InspectionType = 'Routine Inspection' | 'Safety Inspection' | 'Environmental Inspection' | 'Labour Inspection' | 'Operations Inspection' | 'Follow-up Inspection'
 export type FindingCategory = 'Safety' | 'Environment' | 'Labour' | 'Operations'
-export type FindingStatus = 'Open' | 'Under Review' | 'Resolved' | 'Closed'
+export type FindingStatus = 'Open' | 'Under Review' | 'Resolved' | 'Closed' | 'Accepted Risk'
 export type InspectionChecklistResponseStatus = 'Compliant' | 'Non-compliant' | 'Partially compliant' | 'N/A'
 export type EvidenceDocumentStatus = 'Draft' | 'Uploaded' | 'Approved' | 'Expired' | 'Rejected'
 export type EvidenceDocumentType = 'Safety Report' | 'Environmental Monitoring' | 'Equipment Maintenance Certificate' | 'Statutory Compliance' | 'Training Record' | 'Incident Report' | 'Labour Compliance'
@@ -40,6 +40,7 @@ export interface InspectionFinding {
   category: FindingCategory
   severity: RiskLevel
   status: FindingStatus
+  recommendation?: string
   location?: string
   notes?: string
   createdAt: string
@@ -75,7 +76,6 @@ export interface ComplianceEvidenceDocument {
   fileName?: string
   mimeType?: string
   fileSizeBytes?: number
-  fileSizeLabel?: string
   storageMode?: 'demo' | 'supabase'
   storagePath?: string
   accessUrl?: string

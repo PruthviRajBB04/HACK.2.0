@@ -18,9 +18,8 @@ export interface InspectionFindingInput {
   description: string
   category: 'Safety' | 'Environment' | 'Labour' | 'Operations'
   severity: 'Low' | 'Medium' | 'High' | 'Critical'
-  status?: 'Open' | 'Under Review' | 'Resolved' | 'Closed'
-  location?: string
-  notes?: string
+  status?: 'Open' | 'Resolved' | 'Accepted Risk'
+  recommendation?: string
 }
 
 interface InspectionRow {
@@ -47,8 +46,7 @@ interface InspectionFindingRow {
   category: string
   severity: string
   status: string
-  location: string | null
-  notes: string | null
+  recommendation: string | null
   created_at: string | null
   updated_at: string | null
 }
@@ -110,13 +108,11 @@ function normalizeRisk(value?: string | null): Inspection['riskLevel'] {
 
 function normalizeFindingStatus(value?: string | null): InspectionFinding['status'] {
   switch ((value ?? '').toLowerCase()) {
-    case 'under review':
-    case 'under_review':
-      return 'Under Review'
     case 'resolved':
       return 'Resolved'
-    case 'closed':
-      return 'Closed'
+    case 'accepted risk':
+    case 'accepted_risk':
+      return 'Accepted Risk'
     case 'open':
     default:
       return 'Open'
@@ -161,8 +157,7 @@ function mapInspectionFinding(row: InspectionFindingRow): InspectionFinding {
     category: (row.category as InspectionFinding['category']) ?? 'Safety',
     severity: normalizeRisk(row.severity) ?? 'Medium',
     status: normalizeFindingStatus(row.status),
-    location: row.location ?? undefined,
-    notes: row.notes ?? undefined,
+    recommendation: row.recommendation ?? undefined,
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? row.created_at ?? new Date().toISOString(),
   }
@@ -337,10 +332,9 @@ export async function createInspectionFinding(input: InspectionFindingInput, org
       title: input.title.trim(),
       description: input.description.trim(),
       category: input.category,
-      severity: (input.severity ?? 'Medium').toLowerCase(),
-      status: (input.status ?? 'Open').toLowerCase().replace(/\s+/g, '_'),
-      location: input.location?.trim() || null,
-      notes: input.notes?.trim() || null,
+      severity: input.severity ?? 'Medium',
+      status: input.status === 'Resolved' ? 'Resolved' : input.status === 'Accepted Risk' ? 'Accepted Risk' : 'Open',
+      recommendation: input.recommendation?.trim() || null,
       organization_id: organizationId,
     })
     .select('*')
@@ -354,7 +348,7 @@ export async function updateFindingStatus(id: string, status: InspectionFinding[
   const { data, error } = await supabase
     .from('inspection_findings')
     .update({
-      status: status.toLowerCase().replace(/\s+/g, '_'),
+      status,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

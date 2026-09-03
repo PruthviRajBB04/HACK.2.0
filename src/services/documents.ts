@@ -18,7 +18,6 @@ export type EvidenceDocumentInput = {
   fileName?: string
   mimeType?: string
   fileSizeBytes?: number
-  fileSizeLabel?: string
   storageMode?: 'demo' | 'supabase'
   storagePath?: string
 }
@@ -27,7 +26,6 @@ interface EvidenceRow {
   id: string
   title: string | null
   document_type: string | null
-  description: string | null
   mine_id: string | null
   inspection_id: string | null
   checklist_item_id: string | null
@@ -40,7 +38,6 @@ interface EvidenceRow {
   file_name: string | null
   mime_type: string | null
   file_size_bytes: number | null
-  file_size_label: string | null
   storage_mode: string | null
   storage_path: string | null
   created_at: string | null
@@ -68,7 +65,6 @@ function mapDocument(row: EvidenceRow): ComplianceEvidenceDocument {
     id: row.id,
     name: row.title ?? row.file_name ?? 'Evidence document',
     documentType: row.document_type ?? 'Statutory Compliance',
-    description: row.description ?? undefined,
     mineId: row.mine_id ?? '',
     inspectionId: row.inspection_id ?? undefined,
     checklistItemId: row.checklist_item_id ?? undefined,
@@ -79,7 +75,6 @@ function mapDocument(row: EvidenceRow): ComplianceEvidenceDocument {
     fileName: row.file_name ?? undefined,
     mimeType: row.mime_type ?? undefined,
     fileSizeBytes: row.file_size_bytes ?? undefined,
-    fileSizeLabel: row.file_size_label ?? undefined,
     storageMode: (row.storage_mode as 'demo' | 'supabase') ?? 'demo',
     storagePath: row.storage_path ?? row.file_path ?? undefined,
     createdAt: row.created_at ?? row.uploaded_at ?? new Date().toISOString(),
@@ -118,6 +113,15 @@ export async function getEvidenceAccessUrl(storagePath: string): Promise<string>
   return data.signedUrl
 }
 
+export async function linkEvidenceToFinding(evidenceId: string, findingId: string): Promise<void> {
+  const { error } = await supabase
+    .from('documents')
+    .update({ finding_id: findingId, updated_at: new Date().toISOString() })
+    .eq('id', evidenceId)
+
+  if (error) throw new Error(error.message)
+}
+
 export async function getEvidenceDocumentById(id: string): Promise<ComplianceEvidenceDocument | null> {
   const { data, error } = await supabase
     .from('documents')
@@ -144,7 +148,6 @@ export async function createEvidenceDocument(input: EvidenceDocumentInput, organ
   const payload = {
     title: input.name.trim(),
     document_type: input.documentType,
-    description: input.description?.trim() || null,
     mine_id: input.mineId,
     inspection_id: input.inspectionId || null,
     checklist_item_id: input.checklistItemId || null,
@@ -158,7 +161,6 @@ export async function createEvidenceDocument(input: EvidenceDocumentInput, organ
     file_name: input.fileName?.trim() || input.name.trim(),
     mime_type: input.mimeType || null,
     file_size_bytes: input.fileSizeBytes ?? null,
-    file_size_label: input.fileSizeLabel || 'Unknown file size',
     storage_mode: input.storageMode ?? 'demo',
     storage_path: input.storagePath || `/demo/evidence/${(input.fileName || input.name).trim().toLowerCase().replace(/\s+/g, '-')}`,
     organization_id: organizationId,
@@ -245,7 +247,6 @@ export async function uploadEvidenceDocument(file: File | null, input: EvidenceD
       name: input.name || file.name,
       mineId: inspection.mine_id,
       fileName: file.name,
-      fileSizeLabel: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
       fileSizeBytes: file.size,
       mimeType: file.type || 'application/octet-stream',
       storageMode: 'supabase',

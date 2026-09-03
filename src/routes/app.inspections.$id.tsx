@@ -5,11 +5,12 @@ import { Button, Card, ErrorState, Field, Input, LoadingState, Select, Textarea 
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { demoInspectionFindings, demoInspections, demoMines } from '@/data/demo'
-import { ensureInspectionChecklist, getInspectionById, getInspectionFindings, getInspectionChecklist, saveInspectionChecklist, updateFindingStatus, updateInspectionStatus } from '@/services/inspections'
+import { createInspectionFinding, ensureInspectionChecklist, getInspectionById, getInspectionFindings, getInspectionChecklist, saveInspectionChecklist, updateFindingStatus, updateInspectionStatus } from '@/services/inspections'
 import type { Inspection, InspectionChecklistItem, InspectionChecklistResponseStatus, InspectionFinding } from '@/types/domain'
 import { useSession } from '@/context/SessionContext'
-import { getEvidenceAccessUrl, getInspectionEvidence, uploadEvidenceDocument } from '@/services/documents'
+import { getEvidenceAccessUrl, getInspectionEvidence, linkEvidenceToFinding, uploadEvidenceDocument } from '@/services/documents'
 import type { ComplianceEvidenceDocument } from '@/types/domain'
+import { analyzeInspectionEvidence, type InspectionVisionAnalysis } from '@/services/inspection-vision'
 
 export const Route = createFileRoute('/app/inspections/$id')({ component: InspectionDetailPage })
 
@@ -37,6 +38,13 @@ function InspectionDetailPage() {
   const [evidenceDescription, setEvidenceDescription] = useState('')
   const [evidenceChecklistId, setEvidenceChecklistId] = useState('')
   const [evidenceFindingId, setEvidenceFindingId] = useState('')
+  const [aiAnalysis, setAiAnalysis] = useState<Record<string, InspectionVisionAnalysis>>({})
+  const [aiAnalyzingId, setAiAnalyzingId] = useState<string | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [findingSaving, setFindingSaving] = useState(false)
+  const [findingError, setFindingError] = useState<string | null>(null)
+  const [findingEvidenceId, setFindingEvidenceId] = useState<string | null>(null)
+  const [findingForm, setFindingForm] = useState<{ title: string; description: string; category: 'Safety' | 'Environment' | 'Labour' | 'Operations'; severity: 'Low' | 'Medium' | 'High' | 'Critical'; recommendation: string }>({ title: '', description: '', category: 'Safety', severity: 'Medium', recommendation: '' })
 
   useEffect(() => {
     let active = true
@@ -154,7 +162,6 @@ function InspectionDetailPage() {
 
   function selectEvidenceFiles(event: ChangeEvent<HTMLInputElement>) {
     setSelectedEvidenceFiles((current) => [...current, ...Array.from(event.target.files ?? [])])
-    event.target.value = ''
   }
 
   function removeEvidenceFile(index: number) {
@@ -163,6 +170,7 @@ function InspectionDetailPage() {
 
   async function addEvidence(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const evidenceForm = event.currentTarget
     if (selectedEvidenceFiles.length === 0 || !inspection) {
       setEvidenceError('Choose at least one file before uploading evidence.')
       return
@@ -173,6 +181,7 @@ function InspectionDetailPage() {
     setEvidenceResults([])
     const successfulFiles: string[] = []
     const failedFiles: string[] = []
+    const failedFileObjects: File[] = []
     try {
       for (const file of selectedEvidenceFiles) {
         try {
@@ -188,6 +197,7 @@ function InspectionDetailPage() {
           successfulFiles.push(file.name)
         } catch (caughtError) {
           failedFiles.push(`${file.name}: ${caughtError instanceof Error ? caughtError.message : 'Upload failed'}`)
+          failedFileObjects.push(file)
         }
       }
 
@@ -197,9 +207,13 @@ function InspectionDetailPage() {
       setEvidenceResults(successfulFiles.map((fileName) => `Uploaded: ${fileName}`))
       if (failedFiles.length > 0) {
         setEvidenceError(`Some files could not be uploaded: ${failedFiles.join('; ')}`)
+        setSelectedEvidenceFiles(failedFileObjects)
       }
       if (successfulFiles.length > 0) {
-        setSelectedEvidenceFiles([])
+        if (failedFiles.length === 0) {
+          setSelectedEvidenceFiles([])
+          evidenceForm.reset()
+        }
       }
       setEvidenceDescription('')
       setEvidenceChecklistId('')
@@ -220,12 +234,62 @@ function InspectionDetailPage() {
     }
   }
 
+  async function createFinding(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!inspection) return
+    setFindingSaving(true)
+    setFindingError(null)
+    try {
+      const finding = await createInspectionFinding({ ...findingForm, inspectionId: inspection.id }, session?.organizationId ?? null)
+      if (findingEvidenceId) await linkEvidenceToFinding(findingEvidenceId, finding.id)
+      setFindings((current) => [finding, ...current])
+      if (findingEvidenceId) setEvidence((current) => current.map((record) => record.id === findingEvidenceId ? { ...record, findingId: finding.id } : record))
+      setFindingEvidenceId(null)
+      setFindingForm({ title: '', description: '', category: 'Safety', severity: 'Medium', recommendation: '' })
+    } catch (caughtError) {
+      setFindingError(caughtError instanceof Error ? caughtError.message : 'Unable to create finding.')
+    } finally {
+      setFindingSaving(false)
+    }
+  }
+
+  async function analyzeEvidence(record: ComplianceEvidenceDocument) {
+    if (!inspection || !record.inspectionId) return
+    setAiAnalyzingId(record.id)
+    setAiError(null)
+    try {
+      const analysis = await analyzeInspectionEvidence(inspection.id, record.id)
+      setAiAnalysis((current) => ({ ...current, [record.id]: analysis }))
+    } catch (caughtError) {
+      setAiError(caughtError instanceof Error ? caughtError.message : 'Unable to analyze evidence.')
+    } finally {
+      setAiAnalyzingId(null)
+    }
+  }
+
+  function useAnalysisForFinding(analysis: InspectionVisionAnalysis, evidenceId: string) {
+    setFindingForm((current) => ({
+      ...current,
+      title: analysis.hazardTitle,
+      description: analysis.description,
+      category: analysis.category === 'Safety' || analysis.category === 'Environment' || analysis.category === 'Labour' || analysis.category === 'Operations' ? analysis.category : 'Safety',
+      severity: analysis.severity,
+      recommendation: analysis.recommendation,
+    }))
+    setFindingEvidenceId(evidenceId)
+    setFindingError(null)
+  }
+
   if (loading) return <LoadingState />
   if (!inspection) return <ErrorState message="Inspection not found." />
 
   const completedItems = checklist.filter((item) => item.responseStatus).length
   const applicableItems = checklist.filter((item) => item.responseStatus && item.responseStatus !== 'N/A')
   const compliantItems = checklist.filter((item) => item.responseStatus === 'Compliant').length
+  const partiallyCompliantItems = checklist.filter((item) => item.responseStatus === 'Partially compliant').length
+  const nonCompliantItems = checklist.filter((item) => item.responseStatus === 'Non-compliant').length
+  const notApplicableItems = checklist.filter((item) => item.responseStatus === 'N/A').length
+  const openItems = checklist.filter((item) => !item.responseStatus).length
   const compliancePercentage = applicableItems.length ? Math.round((compliantItems / applicableItems.length) * 100) : 0
   const checklistByCategory = checklist.reduce<Record<string, InspectionChecklistItem[]>>((groups, item) => {
     ;(groups[item.category] ??= []).push(item)
@@ -288,8 +352,13 @@ function InspectionDetailPage() {
         {selectedEvidenceFiles.length > 0 && <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3"><p className="text-sm font-semibold text-slate-900">{selectedEvidenceFiles.length} {selectedEvidenceFiles.length === 1 ? 'file' : 'files'} selected</p><div className="mt-2 space-y-2">{selectedEvidenceFiles.map((file, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center justify-between gap-3 text-sm text-slate-600"><span className="truncate">{file.name}</span><button type="button" onClick={() => removeEvidenceFile(index)} className="shrink-0 font-semibold text-red-700 hover:text-red-900">Remove</button></div>)}</div></div>}
         {evidenceResults.length > 0 && <div className="mt-4 space-y-1 text-sm text-emerald-800">{evidenceResults.map((result) => <p key={result}>{result}</p>)}</div>}
         {evidenceError && <div className="mt-4"><ErrorState message={evidenceError} /></div>}
+        {aiError && <div className="mt-4"><ErrorState message={aiError} /></div>}
         {evidenceLoading ? <div className="mt-4"><LoadingState /></div> : evidence.length === 0 ? <p className="mt-4 text-sm text-slate-500">No evidence uploaded for this inspection yet.</p> : <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {evidence.map((record) => <a key={record.id} href={record.accessUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 p-4 hover:border-emerald-500"><p className="font-semibold text-slate-900">{record.fileName ?? record.name}</p><p className="mt-1 text-xs text-slate-500">{record.documentType}{record.description ? ` · ${record.description}` : ''}</p><p className="mt-2 text-xs text-slate-500">Checklist: {checklist.find((item) => item.id === record.checklistItemId)?.title ?? 'None'} · Finding: {findings.find((finding) => finding.id === record.findingId)?.title ?? 'None'}</p><p className="mt-1 text-xs text-slate-400">{new Date(record.uploadDate).toLocaleString()}</p><span className="mt-3 inline-block text-sm font-semibold text-emerald-800">Open evidence</span></a>)}
+          {evidence.map((record) => {
+            const analysis = aiAnalysis[record.id]
+            const isImage = record.mimeType?.startsWith('image/')
+            return <div key={record.id} className="rounded-xl border border-slate-200 p-4"><a href={record.accessUrl} target="_blank" rel="noreferrer" className="block hover:text-emerald-800"><p className="font-semibold text-slate-900">{record.fileName ?? record.name}</p><p className="mt-1 text-xs text-slate-500">{record.documentType}{record.description ? ` · ${record.description}` : ''}</p><p className="mt-2 text-xs text-slate-500">Checklist: {checklist.find((item) => item.id === record.checklistItemId)?.title ?? 'None'} · Finding: {findings.find((finding) => finding.id === record.findingId)?.title ?? 'None'}</p><p className="mt-1 text-xs text-slate-400">{new Date(record.uploadDate).toLocaleString()}</p><span className="mt-3 inline-block text-sm font-semibold text-emerald-800">Open evidence</span></a>{isImage && <div className="mt-4 border-t border-slate-100 pt-3"><Button type="button" variant="secondary" onClick={() => void analyzeEvidence(record)} disabled={aiAnalyzingId === record.id}>{aiAnalyzingId === record.id ? 'Analyzing…' : analysis ? 'Re-analyze' : 'Analyze with AI'}</Button>{analysis && <div className="mt-3 rounded-xl bg-slate-50 p-4 text-sm"><p className="font-bold uppercase tracking-[.12em] text-slate-500">AI Vision analysis</p><p className="mt-3"><strong>Hazard detected:</strong> {analysis.detectedHazard ? 'Yes' : 'No'}</p><p className="mt-1"><strong>Hazard:</strong> {analysis.hazardTitle}</p><p className="mt-1"><strong>Category:</strong> {analysis.category}</p><p className="mt-1"><strong>Severity:</strong> {analysis.severity}</p><p className="mt-1"><strong>Confidence:</strong> {analysis.confidence}%</p><p className="mt-3"><strong>Description:</strong> {analysis.description}</p><p className="mt-3"><strong>Recommendation:</strong> {analysis.recommendation}</p><Button type="button" className="mt-4" onClick={() => useAnalysisForFinding(analysis, record.id)}>Create Finding</Button></div>}</div>}</div>
+          })}
         </div>}
       </Card>
 
@@ -312,10 +381,15 @@ function InspectionDetailPage() {
           <p className="mt-5 text-sm text-slate-500">No checklist items are available for this inspection.</p>
         ) : (
           <>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Completed items</p><p className="mt-1 text-xl font-bold text-emerald-950">{completedItems} / {checklist.length}</p></div>
               <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Compliance</p><p className="mt-1 text-xl font-bold text-emerald-950">{compliancePercentage}%</p></div>
-              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Open items</p><p className="mt-1 text-xl font-bold text-emerald-950">{checklist.length - completedItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Compliant</p><p className="mt-1 text-xl font-bold text-emerald-950">{compliantItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Partially compliant</p><p className="mt-1 text-xl font-bold text-emerald-950">{partiallyCompliantItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Non-compliant</p><p className="mt-1 text-xl font-bold text-emerald-950">{nonCompliantItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">N/A</p><p className="mt-1 text-xl font-bold text-emerald-950">{notApplicableItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Open / unanswered</p><p className="mt-1 text-xl font-bold text-emerald-950">{openItems}</p></div>
+              <div className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">Open / non-compliant</p><p className="mt-1 text-xl font-bold text-emerald-950">{openItems + nonCompliantItems}</p></div>
             </div>
             <div className="mt-6 space-y-6">
               {Object.entries(checklistByCategory).map(([category, items]) => (
@@ -352,6 +426,17 @@ function InspectionDetailPage() {
       <div className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-5">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-slate-500"><FileText className="size-4" />Findings</div>
+          {inspection.status === 'In Progress' && <form onSubmit={createFinding} className="mt-4 space-y-3 border-b border-slate-200 pb-5">
+            <Field label="Finding title"><Input required value={findingForm.title} onChange={(event) => setFindingForm((current) => ({ ...current, title: event.target.value }))} /></Field>
+            <Field label="Description"><Textarea required value={findingForm.description} onChange={(event) => setFindingForm((current) => ({ ...current, description: event.target.value }))} /></Field>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Category"><Select value={findingForm.category} onChange={(event) => setFindingForm((current) => ({ ...current, category: event.target.value as typeof findingForm.category }))}><option>Safety</option><option>Environment</option><option>Labour</option><option>Operations</option></Select></Field>
+              <Field label="Severity"><Select value={findingForm.severity} onChange={(event) => setFindingForm((current) => ({ ...current, severity: event.target.value as typeof findingForm.severity }))}><option>Low</option><option>Medium</option><option>High</option><option>Critical</option></Select></Field>
+            </div>
+            <Field label="Recommendation"><Textarea value={findingForm.recommendation} onChange={(event) => setFindingForm((current) => ({ ...current, recommendation: event.target.value }))} /></Field>
+            {findingError && <ErrorState message={findingError} />}
+            <Button type="submit" disabled={findingSaving}>{findingSaving ? 'Saving…' : 'Add finding'}</Button>
+          </form>}
           <div className="mt-4 space-y-4">
             {findings.length === 0 ? (
               <p className="text-sm text-slate-500">No findings have been logged for this inspection yet.</p>
@@ -367,14 +452,13 @@ function InspectionDetailPage() {
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                   <span className="rounded-full bg-white px-2 py-1">{finding.category}</span>
                   <span className="rounded-full bg-white px-2 py-1">{finding.severity}</span>
-                  {finding.location && <span className="rounded-full bg-white px-2 py-1">{finding.location}</span>}
+                  {finding.recommendation && <span className="rounded-full bg-white px-2 py-1">Recommendation recorded</span>}
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-3">
                   <Select value={finding.status} onChange={(event) => void updateFindingStatusFor(finding.id, event.target.value as InspectionFinding['status'])} className="mt-0 max-w-[200px]">
                     <option>Open</option>
-                    <option>Under Review</option>
                     <option>Resolved</option>
-                    <option>Closed</option>
+                    <option>Accepted Risk</option>
                   </Select>
                 </div>
               </div>
