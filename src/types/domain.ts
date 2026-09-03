@@ -79,6 +79,7 @@ export interface ComplianceEvidenceDocument {
   storageMode?: 'demo' | 'supabase'
   storagePath?: string
   accessUrl?: string
+  aiAnalysis?: any // Stores InspectionVisionAnalysis result from AI Vision
   createdAt: string
   updatedAt: string
 }

@@ -40,6 +40,7 @@ interface EvidenceRow {
   file_size_bytes: number | null
   storage_mode: string | null
   storage_path: string | null
+  ai_analysis: any | null
   created_at: string | null
   updated_at: string | null
 }
@@ -77,6 +78,7 @@ function mapDocument(row: EvidenceRow): ComplianceEvidenceDocument {
     fileSizeBytes: row.file_size_bytes ?? undefined,
     storageMode: (row.storage_mode as 'demo' | 'supabase') ?? 'demo',
     storagePath: row.storage_path ?? row.file_path ?? undefined,
+    aiAnalysis: row.ai_analysis ?? undefined,
     createdAt: row.created_at ?? row.uploaded_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? row.uploaded_at ?? row.created_at ?? new Date().toISOString(),
   }
@@ -257,4 +259,17 @@ export async function uploadEvidenceDocument(file: File | null, input: EvidenceD
     await supabase.storage.from('inspection-evidence').remove([storagePath])
     throw caughtError
   }
+}
+
+export async function saveAiAnalysis(evidenceId: string, analysis: any): Promise<void> {
+  const { error } = await supabase
+    .from('documents')
+    .update({
+      ai_analysis: analysis,
+      ai_analysis_updated_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', evidenceId)
+
+  if (error) throw new Error(error.message)
 }
