@@ -1,15 +1,16 @@
 import type { ComplianceStatus, EvidenceDocumentStatus, InspectionStatus, MineStatus, RiskLevel } from '@/types/domain'
 
-type Status = RiskLevel | ComplianceStatus | MineStatus | InspectionStatus | EvidenceDocumentStatus | 'Critical' | 'Warning' | 'Information' | 'Success' | 'Open' | 'Under Review' | 'Resolved' | 'Closed' | 'Accepted Risk'
+type Status = RiskLevel | ComplianceStatus | MineStatus | InspectionStatus | EvidenceDocumentStatus | 'Critical' | 'Warning' | 'Information' | 'Success' | 'Open' | 'Under Review' | 'Resolved' | 'Closed' | 'Accepted Risk' | 'Not Assessed'
 const tones: Record<Status, string> = {
   Low: 'bg-emerald-50 text-emerald-800 ring-emerald-200', Compliant: 'bg-emerald-50 text-emerald-800 ring-emerald-200', Operational: 'bg-emerald-50 text-emerald-800 ring-emerald-200', Success: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   Scheduled: 'bg-slate-100 text-slate-700 ring-slate-200',
   'In Progress': 'bg-blue-50 text-blue-800 ring-blue-200',
+  Submitted: 'bg-blue-50 text-blue-800 ring-blue-200',
+  Approved: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   Completed: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   Cancelled: 'bg-slate-200 text-slate-700 ring-slate-300',
   Draft: 'bg-slate-100 text-slate-700 ring-slate-200',
   Uploaded: 'bg-blue-50 text-blue-800 ring-blue-200',
-  Approved: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
   Expired: 'bg-red-50 text-red-800 ring-red-200',
   Rejected: 'bg-rose-50 text-rose-800 ring-rose-200',
   Open: 'bg-amber-50 text-amber-800 ring-amber-200', 'Accepted Risk': 'bg-amber-50 text-amber-800 ring-amber-200',

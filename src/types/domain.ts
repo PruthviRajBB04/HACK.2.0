@@ -3,10 +3,13 @@ export type PublicRole = Exclude<UserRole, 'System Administrator'>
 export type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
 export type MineStatus = 'Operational' | 'Attention Required' | 'Under Review'
 export type ComplianceStatus = 'Compliant' | 'Due Soon' | 'Pending' | 'Overdue' | 'Non-Compliant'
-export type InspectionStatus = 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled'
+export type InspectionStatus = 'Scheduled' | 'In Progress' | 'Submitted' | 'Under Review' | 'Approved' | 'Closed' | 'Cancelled'
 export type InspectionType = 'Routine Inspection' | 'Safety Inspection' | 'Environmental Inspection' | 'Labour Inspection' | 'Operations Inspection' | 'Follow-up Inspection'
 export type FindingCategory = 'Safety' | 'Environment' | 'Labour' | 'Operations'
+export type FindingSource = 'Manual' | 'AI'
 export type FindingStatus = 'Open' | 'Under Review' | 'Resolved' | 'Closed' | 'Accepted Risk'
+export type CorrectiveActionStatus = 'Open' | 'Assigned' | 'In Progress' | 'Resolved' | 'Verified' | 'Closed'
+export type CorrectiveActionPriority = 'High' | 'Medium' | 'Low'
 export type InspectionChecklistResponseStatus = 'Compliant' | 'Non-compliant' | 'Partially compliant' | 'N/A'
 export type EvidenceDocumentStatus = 'Draft' | 'Uploaded' | 'Approved' | 'Expired' | 'Rejected'
 export type EvidenceDocumentType = 'Safety Report' | 'Environmental Monitoring' | 'Equipment Maintenance Certificate' | 'Statutory Compliance' | 'Training Record' | 'Incident Report' | 'Labour Compliance'
@@ -28,6 +31,9 @@ export interface Inspection {
   notes?: string
   status: InspectionStatus
   riskLevel: RiskLevel | null
+  reviewer?: string
+  reviewComments?: string
+  reviewedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -40,9 +46,24 @@ export interface InspectionFinding {
   category: FindingCategory
   severity: RiskLevel
   status: FindingStatus
+  source: FindingSource
   recommendation?: string
   location?: string
   notes?: string
+  createdAt: string
+  updatedAt: string
+}
+export interface CorrectiveAction {
+  id: string
+  organizationId: string
+  inspectionId: string
+  findingId: string
+  mineId: string
+  action: string
+  responsiblePerson: string
+  dueDate: string
+  priority: CorrectiveActionPriority
+  status: CorrectiveActionStatus
   createdAt: string
   updatedAt: string
 }
