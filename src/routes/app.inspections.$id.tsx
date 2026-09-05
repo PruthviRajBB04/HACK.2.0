@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import { createFileRoute, Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, CheckCircle2, CircleAlert, FileText, Upload } from 'lucide-react'
-import { Button, Card, ErrorState, Field, Input, LoadingState, Select, Textarea } from '@/components/ui'
+import { Button, Card, Dialog, ErrorState, Field, Input, LoadingState, Select, Textarea } from '@/components/ui'
 import { PageHeader } from '@/components/PageHeader'
 import { StatusBadge } from '@/components/StatusBadge'
 import { demoInspectionFindings, demoInspections, demoMines } from '@/data/demo'
@@ -14,6 +14,7 @@ import type { ComplianceEvidenceDocument } from '@/types/domain'
 import { analyzeInspectionEvidence, type InspectionVisionAnalysis } from '@/services/inspection-vision'
 import { createCorrectiveAction, getInspectionCorrectiveActions, updateCorrectiveActionStatus } from '@/services/corrective-actions'
 import type { CorrectiveAction, CorrectiveActionPriority, CorrectiveActionStatus } from '@/types/domain'
+import { getComplianceRequirements, syncInspectionComplianceRecords, type ComplianceRequirement } from '@/services/compliance'
 
 export const Route = createFileRoute('/app/inspections/$id')({ component: InspectionDetailRoute })
 
@@ -59,6 +60,7 @@ function InspectionDetailPage() {
   const [actionForm, setActionForm] = useState<{ findingId: string; action: string; responsiblePerson: string; dueDate: string; priority: CorrectiveActionPriority; status: CorrectiveActionStatus }>({ findingId: '', action: '', responsiblePerson: '', dueDate: '', priority: 'Medium', status: 'Open' })
   const [reviewComment, setReviewComment] = useState('')
   const [reviewSaving, setReviewSaving] = useState(false)
+  const [complianceRequirements, setComplianceRequirements] = useState<ComplianceRequirement[]>([])
 
   useEffect(() => {
     let active = true
@@ -100,6 +102,11 @@ function InspectionDetailPage() {
           setFindingForm((current) => ({ ...current, mineId: current.mineId || nextInspection.mineId }))
         } catch (caughtError) {
           if (active) setFindingError(caughtError instanceof Error ? caughtError.message : 'Unable to load mines.')
+        }
+        try {
+          setComplianceRequirements(await getComplianceRequirements())
+        } catch {
+          // Requirement selection remains optional until requirements are configured.
         }
         setEvidenceLoading(true)
         try {
@@ -259,6 +266,12 @@ function InspectionDetailPage() {
     try {
       const updated = await updateInspectionStatus(inspection.id, nextStatus, reviewComment, session?.name)
       setInspection(updated)
+      if (nextStatus === 'Closed') {
+        const latestChecklist = await getInspectionChecklist(inspection.id)
+        setChecklist(latestChecklist)
+        const synchronizedRecords = await syncInspectionComplianceRecords(updated, latestChecklist, session?.organizationId ?? null)
+        if (synchronizedRecords.length > 0) setError(`Inspection closed. Synchronized ${synchronizedRecords.length} compliance record${synchronizedRecords.length === 1 ? '' : 's'}.`)
+      }
       setReviewComment('')
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Unable to update review status.')
@@ -701,7 +714,7 @@ function InspectionDetailPage() {
                     {items.map((item) => (
                       <div key={item.id} className="rounded-xl border border-slate-200 p-4">
                         <p className="font-semibold text-slate-900">{item.title}</p>
-                        <div className="mt-3 grid gap-3 md:grid-cols-[220px_1fr]">
+                        <div className="mt-3 grid gap-3 md:grid-cols-[220px_260px_1fr]">
                           <Field label="Result">
                             <Select disabled={isReadOnly} value={item.responseStatus ?? ''} onChange={(event) => updateChecklistItem(item.id, { responseStatus: (event.target.value || null) as InspectionChecklistResponseStatus | null })} className="mt-1">
                               <option value="">Not assessed</option>
@@ -709,6 +722,12 @@ function InspectionDetailPage() {
                               <option>Non-compliant</option>
                               <option>Partially compliant</option>
                               <option>N/A</option>
+                            </Select>
+                          </Field>
+                          <Field label="Compliance requirement">
+                            <Select disabled={isReadOnly} value={item.complianceRequirementId ?? ''} onChange={(event) => updateChecklistItem(item.id, { complianceRequirementId: event.target.value || undefined })} className="mt-1">
+                              <option value="">Not linked</option>
+                              {complianceRequirements.map((requirement) => <option key={requirement.id} value={requirement.id}>{requirement.title}</option>)}
                             </Select>
                           </Field>
                           <Field label="Comment">

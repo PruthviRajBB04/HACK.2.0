@@ -61,6 +61,7 @@ interface InspectionFindingRow {
 interface InspectionChecklistRow {
   id: string
   inspection_id: string
+  compliance_requirement_id: string | null
   title: string
   category: string
   sort_order: number
@@ -192,6 +193,7 @@ function mapChecklistItem(row: InspectionChecklistRow, response?: InspectionChec
   return {
     id: row.id,
     inspectionId: row.inspection_id,
+    complianceRequirementId: row.compliance_requirement_id ?? undefined,
     title: row.title,
     category: row.category,
     sortOrder: row.sort_order,
@@ -267,7 +269,7 @@ export async function updateInspectionStatus(id: string, status: Inspection['sta
 export async function getInspectionChecklist(inspectionId: string): Promise<InspectionChecklistItem[]> {
   const { data: checklistRows, error: checklistError } = await supabase
     .from('inspection_checklists')
-    .select('id, inspection_id, title, category, sort_order, created_at')
+    .select('id, inspection_id, compliance_requirement_id, title, category, sort_order, created_at')
     .eq('inspection_id', inspectionId)
     .order('sort_order', { ascending: true })
 
@@ -321,6 +323,15 @@ export async function saveInspectionChecklist(
       checklist_id: item.id,
       status: item.responseStatus ? item.responseStatus.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_').replace('/', '') : null,
       comment: item.comment?.trim() || null,
+    }))
+
+    await Promise.all(items.map(async (item) => {
+      const { error } = await supabase
+        .from('inspection_checklists')
+        .update({ compliance_requirement_id: item.complianceRequirementId ?? null })
+        .eq('id', item.id)
+        .eq('inspection_id', inspectionId)
+      if (error) throw new Error(error.message)
     }))
 
   if (responses.length > 0) {

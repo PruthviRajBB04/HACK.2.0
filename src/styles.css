@@ -15,3 +15,16 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .scrollbar-thin { scrollbar-width: thin; scrollbar-color: #9caea6 transparent; }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 .animate-rise { animation: rise .55s ease-out both; }
+.report-label { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #64748b; }
+.report-value { margin-top: 4px; font-size: 14px; font-weight: 600; color: #0f172a; }
+.report-heading { margin-bottom: 16px; font-family: 'IBM Plex Serif', serif; font-size: 22px; font-weight: 600; color: #0d2d25; }
+.report-section { margin-top: 28px; }
+@media print {
+	body { background: white; }
+	.print-hidden, nav, aside { display: none !important; }
+	.report-page { max-width: none; padding: 0; }
+	.report-section, .report-break { break-inside: avoid; }
+	.report-page a { color: inherit; text-decoration: none; }
+	.report-page .rounded-xl { border-radius: 0; }
+	.report-page footer { margin-top: 24px; }
+}

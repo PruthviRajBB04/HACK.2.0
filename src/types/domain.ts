@@ -15,7 +15,7 @@ export type EvidenceDocumentStatus = 'Draft' | 'Uploaded' | 'Approved' | 'Expire
 export type EvidenceDocumentType = 'Safety Report' | 'Environmental Monitoring' | 'Equipment Maintenance Certificate' | 'Statutory Compliance' | 'Training Record' | 'Incident Report' | 'Labour Compliance'
 
 export interface Mine { id: string; name: string; location: string; subsidiary: string; type: string; compliance: number; risk: RiskLevel; openViolations: number; overdueActions: number; lastInspection: string; status: MineStatus; production: string; workers: number; contractors: number; isPrimaryDemo?: boolean }
-export interface ComplianceRecord { id: string; requirement: string; category: 'Safety' | 'Environment' | 'Labour' | 'Operations'; mineId: string; dueDate: string; status: ComplianceStatus; risk: RiskLevel; responsibleDepartment: string }
+export interface ComplianceRecord { id: string; requirement: string; description?: string; regulation?: string; frequency?: string; dueDays?: number; category: 'Safety' | 'Environment' | 'Labour' | 'Operations'; mineId: string; inspectionId?: string; dueDate: string; completedDate?: string; remarks?: string; createdBy?: string; createdAt?: string; updatedAt?: string; status: ComplianceStatus; risk: RiskLevel | null; responsibleDepartment: string; requirementId?: string }
 export interface AppNotification { id: string; type: 'Critical' | 'Warning' | 'Information' | 'Success'; title: string; description: string; mineId?: string; timestamp: string; read: boolean }
 export interface SessionUser { id?: string; organizationId?: string; name: string; role: PublicRole; employeeId?: string; organization: string; department: string; assignedMineId?: string; email?: string; isDemo: boolean }
 export type OrganizationType = 'Public Sector Undertaking' | 'Private Limited Company' | 'State Mining Corporation' | 'Joint Venture' | 'Captive Mine Operator' | 'Contractor / Operator' | 'Regulatory Body' | 'Other'
@@ -70,6 +70,7 @@ export interface CorrectiveAction {
 export interface InspectionChecklistItem {
   id: string
   inspectionId: string
+  complianceRequirementId?: string
   title: string
   category: string
   sortOrder: number

@@ -1,0 +1,2 @@
+-- Note: Inspections table RLS policies are already created in organization_ownership.sql migration.
+-- This migration is a placeholder for any future inspection-specific updates.;

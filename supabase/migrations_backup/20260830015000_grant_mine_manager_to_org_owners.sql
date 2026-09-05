@@ -62,6 +62,7 @@ begin
   return org;
 end;
 $$;
+
 -- Promote existing organization owners to mine_manager role if they don't already have it.
 update public.profiles
 set role = 'mine_manager'

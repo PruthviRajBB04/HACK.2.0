@@ -16,6 +16,7 @@ create table public.organizations (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
 create table public.organization_members (
   organization_id uuid not null references public.organizations(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -24,14 +25,18 @@ create table public.organization_members (
   primary key (organization_id, user_id),
   unique (user_id)
 );
+
 alter table public.profiles
   add column if not exists organization_id uuid references public.organizations(id) on delete set null;
+
 create index organizations_created_by_idx on public.organizations (created_by);
 create index organization_members_user_id_idx on public.organization_members (user_id);
 create index profiles_organization_id_idx on public.profiles (organization_id);
+
 create trigger set_organizations_updated_at
 before update on public.organizations
 for each row execute function public.set_updated_at();
+
 create or replace function public.is_org_member(org_id uuid)
 returns boolean
 language sql
@@ -46,6 +51,7 @@ as $$
       and user_id = auth.uid()
   );
 $$;
+
 create or replace function public.create_organization(
   p_name text,
   p_organization_type text,
@@ -131,6 +137,7 @@ begin
   return org;
 end;
 $$;
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -148,28 +155,36 @@ begin
   return new;
 end;
 $$;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
+
 alter table public.organizations enable row level security;
 alter table public.organization_members enable row level security;
+
 create policy "Members can read their organization"
 on public.organizations for select to authenticated
 using (created_by = auth.uid() or public.is_org_member(id));
+
 create policy "Authenticated users can create organizations"
 on public.organizations for insert to authenticated
 with check (created_by = auth.uid());
+
 create policy "Members can update their organization"
 on public.organizations for update to authenticated
 using (public.is_org_member(id))
 with check (public.is_org_member(id));
+
 create policy "Users can read their organization membership"
 on public.organization_members for select to authenticated
 using (user_id = auth.uid() or public.is_org_member(organization_id));
+
 create policy "Users can join an organization as themselves"
 on public.organization_members for insert to authenticated
 with check (user_id = auth.uid());
+
 grant select, insert, update on table public.organizations to authenticated;
 grant select, insert on table public.organization_members to authenticated;
 grant execute on function public.is_org_member(uuid) to authenticated;

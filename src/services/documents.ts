@@ -45,6 +45,12 @@ interface EvidenceRow {
   updated_at: string | null
 }
 
+async function assertInspectionNotClosed(inspectionId: string): Promise<void> {
+  const { data, error } = await supabase.from('inspections').select('status').eq('id', inspectionId).single()
+  if (error) throw new Error(error.message)
+  if (String(data.status).toLowerCase() === 'closed') throw new Error('Closed inspections are read-only.')
+}
+
 function normalizeDocumentStatus(value?: string | null): ComplianceEvidenceDocument['status'] {
   switch ((value ?? '').toLowerCase()) {
     case 'approved':
@@ -90,10 +96,7 @@ export async function getEvidenceDocuments(): Promise<ComplianceEvidenceDocument
     .select('*')
     .order('uploaded_at', { ascending: false })
 
-  if (error) {
-    const demoDocuments = await import('@/data/demo').then((module) => module.demoEvidenceDocuments)
-    return demoDocuments
-  }
+  if (error) throw new Error(error.message)
 
   return (data ?? []).map((row) => mapDocument(row as EvidenceRow))
 }
@@ -116,6 +119,9 @@ export async function getEvidenceAccessUrl(storagePath: string): Promise<string>
 }
 
 export async function linkEvidenceToFinding(evidenceId: string, findingId: string): Promise<void> {
+  const { data: evidence, error: evidenceError } = await supabase.from('documents').select('inspection_id').eq('id', evidenceId).single()
+  if (evidenceError) throw new Error(evidenceError.message)
+  if (evidence.inspection_id) await assertInspectionNotClosed(evidence.inspection_id)
   const { error } = await supabase
     .from('documents')
     .update({ finding_id: findingId, updated_at: new Date().toISOString() })
@@ -131,10 +137,7 @@ export async function getEvidenceDocumentById(id: string): Promise<ComplianceEvi
     .eq('id', id)
     .maybeSingle()
 
-  if (error) {
-    const demoDocuments = await import('@/data/demo').then((module) => module.demoEvidenceDocuments)
-    return demoDocuments.find((item) => item.id === id) ?? null
-  }
+  if (error) throw new Error(error.message)
 
   return data ? mapDocument(data as EvidenceRow) : null
 }
@@ -143,6 +146,7 @@ export async function createEvidenceDocument(input: EvidenceDocumentInput, organ
   if (!organizationId) {
     throw new Error('This session is not linked to an organization. Complete organization setup or sign in before uploading evidence.')
   }
+  if (input.inspectionId) await assertInspectionNotClosed(input.inspectionId)
 
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData.user) throw new Error('Sign in before saving evidence metadata.')
@@ -179,6 +183,9 @@ export async function createEvidenceDocument(input: EvidenceDocumentInput, organ
 }
 
 export async function updateEvidenceDocumentStatus(id: string, status: ComplianceEvidenceDocument['status']): Promise<ComplianceEvidenceDocument> {
+  const { data: evidence, error: evidenceError } = await supabase.from('documents').select('inspection_id').eq('id', id).single()
+  if (evidenceError) throw new Error(evidenceError.message)
+  if (evidence.inspection_id) await assertInspectionNotClosed(evidence.inspection_id)
   const { data, error } = await supabase
     .from('documents')
     .update({
@@ -194,6 +201,9 @@ export async function updateEvidenceDocumentStatus(id: string, status: Complianc
 }
 
 export async function deleteEvidenceDocument(id: string): Promise<void> {
+  const { data: evidence, error: evidenceError } = await supabase.from('documents').select('inspection_id').eq('id', id).single()
+  if (evidenceError) throw new Error(evidenceError.message)
+  if (evidence.inspection_id) await assertInspectionNotClosed(evidence.inspection_id)
   const { error } = await supabase.from('documents').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }
@@ -217,6 +227,7 @@ export async function uploadEvidenceDocument(file: File | null, input: EvidenceD
     .eq('id', input.inspectionId)
     .single()
   if (inspectionError || !inspection) throw new Error('Inspection not found or unavailable.')
+  await assertInspectionNotClosed(input.inspectionId)
 
   if (input.checklistItemId) {
     const { data: checklistItem, error: checklistError } = await supabase
@@ -262,6 +273,9 @@ export async function uploadEvidenceDocument(file: File | null, input: EvidenceD
 }
 
 export async function saveAiAnalysis(evidenceId: string, analysis: any): Promise<void> {
+  const { data: evidence, error: evidenceError } = await supabase.from('documents').select('inspection_id').eq('id', evidenceId).single()
+  if (evidenceError) throw new Error(evidenceError.message)
+  if (evidence.inspection_id) await assertInspectionNotClosed(evidence.inspection_id)
   const { error } = await supabase
     .from('documents')
     .update({
